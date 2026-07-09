@@ -39,6 +39,8 @@
     width:160px;height:160px;background:var(--accent);opacity:.18;border-radius:50%}
   header.top h1{margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:-.2px}
   header.top p{margin:0;opacity:.9;font-size:15px}
+  header.top .logo{position:absolute;inset-inline-end:22px;top:50%;transform:translateY(-50%);
+    max-height:64px;max-width:64px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.92);padding:6px}
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:22px 22px 8px;margin-top:18px;box-shadow:0 2px 8px rgba(28,39,51,.05)
@@ -201,6 +203,7 @@
 <body>
 <div class="wrap">
   <header class="top">
+    <img class="logo" id="company-logo" src="logo.png" alt="לוגו" onerror="this.style.display='none';this.dataset.hidden='1'">
     <h1>טופס ראיון עבודה – מהנדס / מנהל עבודה בבנייה</h1>
     <p>נא למלא את הפרטים והשאלות. בסיום ניתן להוריד קובץ PDF ולשתף אותו בקלות.</p>
   </header>
@@ -210,14 +213,14 @@
     <div class="card">
       <h2><span class="num">✓</span> פרטים אישיים</h2>
       <div class="grid2">
-        <div class="q"><label>שם מלא <span class="req">*</span></label>
-          <input type="text" name="fullname" required></div>
-        <div class="q"><label>תפקיד מבוקש <span class="req">*</span></label>
-          <input type="text" name="position" placeholder="מהנדס ביצוע / מנהל עבודה" required></div>
-        <div class="q"><label>טלפון <span class="req">*</span></label>
-          <input type="tel" name="phone" required></div>
-        <div class="q"><label>דוא"ל <span class="req">*</span></label>
-          <input type="email" name="email" required></div>
+        <div class="q"><label>שם מלא</label>
+          <input type="text" name="fullname"></div>
+        <div class="q"><label>תפקיד מבוקש</label>
+          <input type="text" name="position" placeholder="מהנדס ביצוע / מנהל עבודה"></div>
+        <div class="q"><label>טלפון</label>
+          <input type="tel" name="phone"></div>
+        <div class="q"><label>דוא"ל</label>
+          <input type="email" name="email"></div>
       </div>
     </div>
 
@@ -244,15 +247,11 @@
     </div>
 
     <div class="actions">
-      <button type="button" class="btn btn-ghost" id="btn-download">
-        ⬇️ הורדת PDF
-      </button>
       <button type="button" class="btn btn-primary" id="btn-share">
-        📤 יצירה ושיתוף
+        📤 יצירת PDF ושיתוף
       </button>
     </div>
     <div class="msg" id="msg"></div>
-    <p class="note">שדות המסומנים ב‑<span class="req">*</span> הם חובה.</p>
   </form>
 </div>
 
@@ -318,17 +317,17 @@ const qWrap = document.getElementById('questions');
 QUESTIONS.forEach((item,i)=>{
   const c=document.createElement('div');c.className='card';
   c.innerHTML=`<h2><span class="num">${i+1}</span> ${item.q}</h2>
-    <div class="q"><textarea name="q${i}" data-q="${escapeAttr(item.q)}" required></textarea></div>`;
+    <div class="q"><textarea name="q${i}" data-q="${escapeAttr(item.q)}"></textarea></div>`;
   qWrap.appendChild(c);
 });
 const secTitle=document.createElement('div');
-secTitle.className='section-title';secTitle.textContent='שאלות הנדסיות (חובה)';
+secTitle.className='section-title';secTitle.textContent='שאלות הנדסיות';
 qWrap.appendChild(secTitle);
 ENG.forEach((item,i)=>{
   const c=document.createElement('div');c.className='card';
   c.innerHTML=`<h2><span class="num">${i+13}</span> שאלה הנדסית</h2>
     <div class="scenario">${item.q}</div>
-    <div class="q"><textarea name="e${i}" data-q="${escapeAttr(item.q)}" required></textarea></div>`;
+    <div class="q"><textarea name="e${i}" data-q="${escapeAttr(item.q)}"></textarea></div>`;
   qWrap.appendChild(c);
 });
 
@@ -421,8 +420,12 @@ async function buildPdfDom(){
     att+='</div>';
   }
   const today=new Date().toLocaleDateString('he-IL');
+  const logoImg=document.getElementById('company-logo');
+  const logoHtml=logoImg&&logoImg.src&&!logoImg.dataset.hidden
+    ?`<img src="${logoImg.src}" style="position:absolute;inset-inline-end:24px;top:18px;max-height:50px;max-width:50px;border-radius:8px;background:rgba(255,255,255,.92);padding:4px">`:'';
   pdf.innerHTML=`
     <div class="p-head">
+      ${logoHtml}
       <h1>טופס ראיון עבודה – מהנדס / מנהל עבודה בבנייה</h1>
       <p>תאריך מילוי: ${today}</p>
     </div>
@@ -482,18 +485,8 @@ function downloadBlob(blob,filename){
 }
 
 /* ============================================================
-   VALIDATION & MESSAGES
+   MESSAGES
    ============================================================ */
-function validate(){
-  const form=document.getElementById('form');
-  let firstBad=null;
-  form.querySelectorAll('[required]').forEach(el=>{
-    el.style.borderColor='';
-    if(!el.value.trim()){el.style.borderColor='var(--err)';if(!firstBad)firstBad=el;}
-  });
-  if(firstBad){firstBad.scrollIntoView({behavior:'smooth',block:'center'});firstBad.focus();}
-  return !firstBad;
-}
 function showMsg(type,text){
   const m=document.getElementById('msg');m.className='msg '+type;m.textContent=text;
   m.scrollIntoView({behavior:'smooth',block:'center'});
@@ -580,7 +573,6 @@ sEmail.addEventListener('click',()=>{
 /* ============================================================
    BUTTONS
    ============================================================ */
-const btnDownload=document.getElementById('btn-download');
 const btnShare=document.getElementById('btn-share');
 
 function setLoading(btn,loading){
@@ -594,21 +586,7 @@ function setLoading(btn,loading){
   }
 }
 
-btnDownload.addEventListener('click',async()=>{
-  if(!validate()){showMsg('err','נא למלא את כל שדות החובה.');return;}
-  setLoading(btnDownload,true);
-  try{
-    const result=await generatePdfBlob();
-    downloadBlob(result.blob,result.filename);
-    showMsg('ok','קובץ ה‑PDF הורד בהצלחה.');
-  }catch(e){
-    showMsg('err','אירעה שגיאה בהפקת ה‑PDF.');console.error(e);
-  }
-  setLoading(btnDownload,false);
-});
-
 btnShare.addEventListener('click',async()=>{
-  if(!validate()){showMsg('err','נא למלא את כל שדות החובה.');return;}
   setLoading(btnShare,true);
   showMsg('ok','מכין קובץ PDF לשיתוף…');
   try{
