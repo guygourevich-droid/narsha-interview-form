@@ -4,5 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "npx serve -l 3000 ."
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "puppeteer": "^25.3.0"
   }
 }

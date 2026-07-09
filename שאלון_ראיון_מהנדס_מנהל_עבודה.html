@@ -109,19 +109,21 @@
   #pdf{display:none;width:794px;background:#fff;color:#1c2733;
     direction:rtl;text-align:right;font-family:'Heebo',Arial,sans-serif;margin:0 auto}
   #pdf.capturing{display:block}
-  #pdf .p-head{background:var(--brand);color:#fff;padding:26px 34px}
+  #pdf .p-head{background:var(--brand);color:#fff;padding:26px 34px;page-break-inside:avoid;break-inside:avoid}
   #pdf .p-head h1{margin:0;font-size:22px}
   #pdf .p-head p{margin:4px 0 0;font-size:13px;opacity:.9}
   #pdf .p-body{padding:22px 34px}
   #pdf .p-contact{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;
-    background:#f4f8fc;border:1px solid #dbe6f0;border-radius:8px;padding:14px 18px;margin-bottom:16px}
+    background:#f4f8fc;border:1px solid #dbe6f0;border-radius:8px;padding:14px 18px;margin-bottom:16px;
+    page-break-inside:avoid;break-inside:avoid}
   #pdf .p-contact div{font-size:13.5px}
   #pdf .p-contact b{color:var(--brand)}
-  #pdf .p-q{margin:0 0 14px;page-break-inside:avoid}
+  #pdf .p-q{margin:0 0 14px;page-break-inside:avoid;break-inside:avoid}
   #pdf .p-q .qt{font-weight:700;color:var(--brand);font-size:14px;margin-bottom:3px}
   #pdf .p-q .qa{font-size:13.5px;white-space:pre-wrap;border-bottom:1px solid #eee;padding-bottom:8px;min-height:16px}
   #pdf .p-sec{font-size:16px;font-weight:800;color:var(--brand);border-inline-start:4px solid var(--accent);
-    padding-inline-start:10px;margin:20px 0 12px}
+    padding-inline-start:10px;margin:20px 0 12px;page-break-inside:avoid;break-inside:avoid;
+    page-break-after:avoid;break-after:avoid}
   #pdf .p-scn{background:#f6f9fc;border:1px dashed #9dbcd9;border-radius:6px;padding:8px 10px;
     font-size:12.5px;margin-bottom:5px;color:#22384f}
   #pdf .p-att{page-break-before:always;padding:22px 34px}
@@ -333,7 +335,7 @@ async function generatePdf(){
     image:{type:'jpeg',quality:.95},
     html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-    pagebreak:{mode:['css','legacy']}};
+    pagebreak:{mode:['avoid-all','css','legacy']}};
   try{
     await html2pdf().set(opt).from(dom).save();
   }finally{
