@@ -464,46 +464,52 @@ async function generatePdfBlob(){
   }));
 
   // Extra settle time for layout
-  await new Promise(r=>setTimeout(r,500));
+  await new Promise(r=>setTimeout(r,300));
 
   const name=(document.querySelector('[name=fullname]').value.trim()||'מועמד').replace(/\s+/g,'_');
   const filename=`ראיון_${name}.pdf`;
 
+  const opt={
+    margin:[10,0,12,0],
+    filename:filename,
+    image:{type:'jpeg',quality:.95},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:['css','legacy']}
+  };
+
   try{
-    // Step 1: Capture DOM to canvas using html2canvas directly
-    const canvas=await html2canvas(dom,{
-      scale:2,
-      useCORS:true,
-      backgroundColor:'#ffffff',
-      windowWidth:794
-    });
-
-    // Step 2: Create multi-page PDF with jsPDF directly
-    const JsPDF=window.jspdf?.jsPDF||window.jspdf||window.jsPDF;
-    if(!JsPDF){throw new Error('jsPDF not found');}
-    const pdf=new JsPDF('p','mm','a4');
-    const imgWidth=210;
-    const pageHeight=297;
-    const imgHeight=(canvas.height*imgWidth)/canvas.width;
-    let heightLeft=imgHeight;
-    let position=0;
-    const imgData=canvas.toDataURL('image/jpeg',0.95);
-
-    pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-    heightLeft-=pageHeight;
-
-    while(heightLeft>0){
-      position=heightLeft-imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
-      heightLeft-=pageHeight;
-    }
-
+    // Use html2pdf Worker API to get blob (same proven engine as .save())
+    const worker=html2pdf().set(opt).from(dom);
+    const pdf=await worker.toPdf().get('pdf');
     const blob=pdf.output('blob');
     return{blob,filename};
   }catch(e){
     console.error('PDF generation error:',e);
     throw e;
+  }finally{
+    dom.classList.remove('capturing');
+  }
+}
+
+// Direct download fallback (known working method from original)
+async function downloadPdfDirect(){
+  const dom=await buildPdfDom();
+  dom.classList.add('capturing');
+  if(document.fonts&&document.fonts.ready){try{await document.fonts.ready;}catch(e){}}
+  await new Promise(r=>setTimeout(r,300));
+
+  const name=(document.querySelector('[name=fullname]').value.trim()||'מועמד').replace(/\s+/g,'_');
+  const filename=`ראיון_${name}.pdf`;
+  const opt={
+    margin:[10,0,12,0],filename:filename,
+    image:{type:'jpeg',quality:.95},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:['css','legacy']}
+  };
+  try{
+    await html2pdf().set(opt).from(dom).save();
   }finally{
     dom.classList.remove('capturing');
   }
@@ -621,11 +627,14 @@ function setLoading(btn,loading){
 
 btnShare.addEventListener('click',async()=>{
   setLoading(btnShare,true);
-  showMsg('ok','מכין קובץ PDF לשיתוף…');
+  showMsg('ok','מכין קובץ PDF…');
   try{
-    const result=await generatePdfBlob();
-    openSharePanel(result);
-    showMsg('ok','ה‑PDF מוכן! בחרו כיצד לשתף.');
+    // Use proven .save() method that works, then show share options
+    await downloadPdfDirect();
+    showMsg('ok','ה‑PDF הורד. בחרו כיצד לשתף אותו:');
+    overlay.classList.add('show');
+    sNative.style.display='none'; // no blob for native share, but download links work
+    shareHint.textContent='הקובץ הורד למכשיר. בחרו אפשרות שיתוף וצרפו את הקובץ שהורד.';
   }catch(e){
     showMsg('err','אירעה שגיאה בהפקת ה‑PDF.');console.error(e);
   }
