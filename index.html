@@ -423,12 +423,8 @@ async function buildPdfDom(){
     att+='</div>';
   }
   const today=new Date().toLocaleDateString('he-IL');
-  const logoImg=document.getElementById('company-logo');
-  const logoHtml=logoImg&&logoImg.src&&!logoImg.dataset.hidden
-    ?`<img src="${logoImg.src}" style="position:absolute;inset-inline-end:24px;top:18px;max-height:40px;max-width:120px;border-radius:6px;background:rgba(255,255,255,.92);padding:4px 8px">`:'';
   pdf.innerHTML=`
     <div class="p-head">
-      ${logoHtml}
       <h1>טופס ראיון עבודה – מהנדס / מנהל עבודה בבנייה</h1>
       <p>תאריך מילוי: ${today}</p>
     </div>
