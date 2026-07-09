@@ -492,7 +492,21 @@ async function generatePdfBlob(){
 async function downloadPdfDirect(){
   const dom=await buildPdfDom();
   dom.classList.add('capturing');
+
+  // Remember scroll position
+  const scrollY=window.scrollY;
+  // Scroll to top so html2canvas captures from the right position
+  window.scrollTo(0,0);
+
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready;}catch(e){}}
+
+  // Wait for images
+  const pdfImgs=[...dom.querySelectorAll('img')];
+  await Promise.all(pdfImgs.map(img=>{
+    if(img.complete&&img.naturalWidth>0)return Promise.resolve();
+    return new Promise(res=>{img.onload=res;img.onerror=res;setTimeout(res,5000);});
+  }));
+
   await new Promise(r=>setTimeout(r,300));
 
   const name=(document.querySelector('[name=fullname]').value.trim()||'מועמד').replace(/\s+/g,'_');
@@ -500,7 +514,7 @@ async function downloadPdfDirect(){
   const opt={
     margin:[10,0,12,0],filename:filename,
     image:{type:'jpeg',quality:.95},
-    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+    html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',x:0,y:0,scrollX:0,scrollY:0},
     jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
     pagebreak:{mode:['css','legacy']}
   };
@@ -508,6 +522,7 @@ async function downloadPdfDirect(){
     await html2pdf().set(opt).from(dom).save();
   }finally{
     dom.classList.remove('capturing');
+    window.scrollTo(0,scrollY); // restore scroll
   }
 }
 
