@@ -1,13 +1,16 @@
 {
   "name": "narsha-interview-form",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
-    "dev": "npx serve -l 3000 ."
+    "dev": "npx serve -l 3000 .",
+    "test:pdf": "node test-images.js && node test-pdf.js",
+    "test:e2e": "node test-e2e.js",
+    "test:share": "node test-share.js",
+    "test:final": "node test-final.js",
+    "test": "node test-images.js && node test-pdf.js && node test-e2e.js && node test-share.js && node test-final.js"
   },
-  "dependencies": {
-    "pdf-lib": "^1.17.1",
-    "pdf-parse": "^2.4.5",
+  "devDependencies": {
     "puppeteer": "^25.3.0"
   }
 }

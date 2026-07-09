@@ -1,0 +1,12 @@
+{
+  "name": "narsha-interview-form",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve -l 3000 .",
+    "test": "node test-images.js && node test-pdf.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.3.0"
+  }
+}

@@ -2,3 +2,8 @@
 node_modules/
 .vercel/
 .vercel
+
+# generated form output (script writes ראיון_*.pdf to the project root)
+# and puppeteer test screenshots/downloads
+/*.pdf
+/test-output/
