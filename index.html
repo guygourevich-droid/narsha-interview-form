@@ -43,7 +43,7 @@
   header.top h1{margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:-.2px}
   header.top p{margin:0;opacity:.9;font-size:15px}
   header.top .logo{position:absolute;inset-inline-end:22px;top:50%;transform:translateY(-50%);
-    max-height:64px;max-width:64px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.92);padding:6px}
+    max-height:50px;max-width:140px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,.92);padding:6px 10px}
   .card{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:22px 22px 8px;margin-top:18px;box-shadow:0 2px 8px rgba(28,39,51,.05)
@@ -425,7 +425,7 @@ async function buildPdfDom(){
   const today=new Date().toLocaleDateString('he-IL');
   const logoImg=document.getElementById('company-logo');
   const logoHtml=logoImg&&logoImg.src&&!logoImg.dataset.hidden
-    ?`<img src="${logoImg.src}" style="position:absolute;inset-inline-end:24px;top:18px;max-height:50px;max-width:50px;border-radius:8px;background:rgba(255,255,255,.92);padding:4px">`:'';
+    ?`<img src="${logoImg.src}" style="position:absolute;inset-inline-end:24px;top:18px;max-height:40px;max-width:120px;border-radius:6px;background:rgba(255,255,255,.92);padding:4px 8px">`:'';
   pdf.innerHTML=`
     <div class="p-head">
       ${logoHtml}
