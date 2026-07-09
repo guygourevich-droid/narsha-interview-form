@@ -446,42 +446,14 @@ async function buildPdfDom(){
   return pdf;
 }
 
-// Convert logo image to data URL for reliable PDF embedding
-function imgToDataURL(url){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
-      canvas.getContext('2d').drawImage(img,0,0);
-      try{resolve(canvas.toDataURL('image/png'));}catch(e){resolve(null);}
-    };
-    img.onerror=()=>resolve(null);
-    img.src=url;
-  });
-}
-
 async function generatePdfBlob(){
-  // Pre-load logo as data URL to avoid CORS/blank issues in html2canvas
-  const logoEl=document.getElementById('company-logo');
-  let logoDataUrl=null;
-  if(logoEl&&!logoEl.dataset.hidden&&logoEl.src){
-    logoDataUrl=await imgToDataURL(logoEl.src);
-  }
-
   const dom=await buildPdfDom();
-  // Replace logo URL with data URL if available
-  if(logoDataUrl){
-    const logoInPdf=dom.querySelector('.p-head img');
-    if(logoInPdf)logoInPdf.src=logoDataUrl;
-  }
   dom.classList.add('capturing');
 
   // Wait for fonts
   if(document.fonts&&document.fonts.ready){try{await document.fonts.ready;}catch(e){}}
 
-  // Wait for all images in PDF DOM to load
+  // Wait for all images in PDF DOM to fully load
   const pdfImgs=[...dom.querySelectorAll('img')];
   await Promise.all(pdfImgs.map(img=>{
     if(img.complete&&img.naturalWidth>0)return Promise.resolve();
@@ -491,23 +463,43 @@ async function generatePdfBlob(){
     });
   }));
 
-  // Extra settle time
-  await new Promise(r=>setTimeout(r,300));
+  // Extra settle time for layout
+  await new Promise(r=>setTimeout(r,500));
 
   const name=(document.querySelector('[name=fullname]').value.trim()||'מועמד').replace(/\s+/g,'_');
   const filename=`ראיון_${name}.pdf`;
 
-  const opt={
-    margin:[10,0,12,0],
-    filename:filename,
-    image:{type:'jpeg',quality:.95},
-    html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',windowWidth:794},
-    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-    pagebreak:{mode:['css','legacy']}
-  };
-
   try{
-    const blob=await html2pdf().set(opt).from(dom).output('blob');
+    // Step 1: Capture DOM to canvas using html2canvas directly
+    const canvas=await html2canvas(dom,{
+      scale:2,
+      useCORS:true,
+      backgroundColor:'#ffffff',
+      windowWidth:794
+    });
+
+    // Step 2: Create multi-page PDF with jsPDF directly
+    const JsPDF=window.jspdf?.jsPDF||window.jspdf||window.jsPDF;
+    if(!JsPDF){throw new Error('jsPDF not found');}
+    const pdf=new JsPDF('p','mm','a4');
+    const imgWidth=210;
+    const pageHeight=297;
+    const imgHeight=(canvas.height*imgWidth)/canvas.width;
+    let heightLeft=imgHeight;
+    let position=0;
+    const imgData=canvas.toDataURL('image/jpeg',0.95);
+
+    pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+    heightLeft-=pageHeight;
+
+    while(heightLeft>0){
+      position=heightLeft-imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+      heightLeft-=pageHeight;
+    }
+
+    const blob=pdf.output('blob');
     return{blob,filename};
   }catch(e){
     console.error('PDF generation error:',e);
