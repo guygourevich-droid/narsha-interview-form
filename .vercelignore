@@ -1,0 +1,12 @@
+test-assets
+test-output
+test-*.js
+test-pdf.html
+tools
+node_modules
+package.json
+package-lock.json
+README.md
+SPEC.md
+CLAUDE.md
+.claude

@@ -1,12 +1,16 @@
 # Narsha Interview Form — v2 rebuild SPEC
 
-Hebrew (RTL), in-browser, **no backend**. Collect contact + 13 questions + 2 engineering
+> **Note:** this is the historical build spec for the v2 rebuild. README.md is the
+> source of truth for current behavior; see the v2.1 addendum at the bottom for
+> post-launch changes.
+
+Hebrew (RTL), in-browser, **no backend**. Collect contact + 12 questions + 2 engineering
 scenarios + document uploads → export a **pixel-perfect PDF** → share it.
 
 ## Files (all at repo root; plain `<script>` tags, no build step)
 - `index.html` — shell; loads Heebo (Google Fonts) + jsPDF (CDN) + `questions.js` + `pdf.js` + `app.js` (in that order).
 - `styles.css` — all styling.
-- `questions.js` — exposes `window.QUESTIONS = [ {q}, ... ]` (13) and `window.ENGINEERING = [ {q}, ... ]` (2). (Reuse the exact Hebrew question text from `legacy/index.html` — copy it verbatim.)
+- `questions.js` — exposes `window.QUESTIONS = [ {q}, ... ]` (12) and `window.ENGINEERING = [ {q}, ... ]` (2). (Reuse the exact Hebrew question text from `legacy/index.html` — copy it verbatim.)
 - `pdf.js` — exposes `async function generateInterviewPdf(data)` → `Promise<{blob, filename}>`. Canvas-rendered. **This is the hard part.**
 - `app.js` — renders the form, manages state/autosave/uploads, runs the share flow, calls `generateInterviewPdf`.
 - `logo.png` — exists (Narsha logo). Reuse.
@@ -110,3 +114,25 @@ Using the tools below, iterate until ALL hold:
 - Heebo: `https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap`.
 - Puppeteer headless tests can fetch CDNs (network available). Wait for `networkidle0` + fonts.
 - Do NOT use html2canvas or html2pdf anywhere.
+
+---
+
+## v2.1 addendum — post-launch fixes (July 2026)
+
+- **Uploads:** files are validated + decoded + re-encoded to a bounded JPEG at pick
+  time (`app.js processImageFile`, max 1600px, q=0.82). Unsupported files (HEIC on
+  Chrome/Android, PDFs, corrupt images) are rejected with a visible Hebrew error
+  instead of being silently dropped from the PDF.
+- **Persistence:** attachments are saved to localStorage (`narsha_interview_form_v2_att`)
+  and restored on reload; the `beforeunload` guard fires only when persistence failed.
+- **Pagination:** text blocks taller than one page (`MAXBLK`) are split into
+  continuation chunks — long answers flow across pages instead of being clipped.
+- **Contact box:** values wrap within their column and the box height is dynamic;
+  `wrap()` hard-breaks single words (long emails/URLs) wider than the line.
+- **Embed accounting:** `debug.imagesRequested/imagesEmbedded` lets app.js warn the
+  user if any attachment failed to embed.
+- **jsPDF is vendored** at `vendor/jspdf-2.5.1.umd.min.js` (no CDN at runtime).
+- **`legacy/` removed** from the repo/deployment; caching headers split in
+  `vercel.json` (HTML/JS/CSS `no-cache`, logo 1 day, vendor immutable); logo.png
+  resized 980→280px; `.vercelignore` keeps tests/docs out of the deploy.
+- New edge-case suite: `test-edge.js`; the PDF analyzer lives at `tools/analyze.py`.

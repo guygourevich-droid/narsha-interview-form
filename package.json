@@ -1,6 +1,6 @@
 {
   "name": "narsha-interview-form",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "npx serve -l 3000 .",
@@ -8,7 +8,8 @@
     "test:e2e": "node test-e2e.js",
     "test:share": "node test-share.js",
     "test:final": "node test-final.js",
-    "test": "node test-images.js && node test-pdf.js && node test-e2e.js && node test-share.js && node test-final.js"
+    "test:edge": "node test-edge.js",
+    "test": "node test-images.js && node test-pdf.js && node test-e2e.js && node test-share.js && node test-final.js && node test-edge.js"
   },
   "devDependencies": {
     "puppeteer": "^25.3.0"

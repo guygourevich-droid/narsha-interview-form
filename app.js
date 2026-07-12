@@ -4,6 +4,7 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const LS_KEY = 'narsha_interview_form_v2';
+  const LS_ATT = 'narsha_interview_form_v2_att';
 
   /* ---- render question cards ---- */
   const qWrap = $('#questions');
@@ -32,12 +33,14 @@
     });
   }
 
-  /* ---- autosave ---- */
+  /* ---- autosave (text fields) ---- */
   const form = $('#form');
+  let textPersisted = true;
   function saveForm() {
     const data = {};
     $$('input[name],textarea[name]').forEach(el => { data[el.name] = el.value; });
-    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); textPersisted = true; }
+    catch (e) { textPersisted = false; }
   }
   function loadForm() {
     try {
@@ -48,68 +51,131 @@
   loadForm();
   form.addEventListener('input', saveForm);
 
-  /* ---- uploads ---- */
-  const store = { id: [], cert: [] };
-  function setupUpload(inputId, key, thumbsId) {
-    const input = $('#' + inputId), thumbs = $('#' + thumbsId);
-    input.addEventListener('change', e => {
-      [...e.target.files].forEach(f => store[key].push(f));
-      input.value = '';
-      renderThumbs(key, thumbs);
+  /* ---- uploads ----
+     Every picked file is validated + decoded + re-encoded to a bounded JPEG
+     data URL at pick time. This surfaces unsupported files (HEIC on
+     Chrome/Android, PDFs, corrupt files) immediately instead of silently
+     dropping them from the generated PDF, keeps memory bounded, and makes
+     attachments small enough to persist in localStorage. */
+  const store = { id: [], cert: [] };   // items: { name, dataUrl }
+  const MAX_DIM = 1600, JPEG_Q = 0.82;
+  let attachmentsPersisted = true;
+
+  function fileToDataUrl(f) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(f);
     });
   }
-  function renderThumbs(key, thumbs) {
+  function decodeImage(src) {
+    return new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error('decode'));
+      im.src = src;
+    });
+  }
+  async function processImageFile(f) {
+    if (!f.type.startsWith('image/')) { const e = new Error('type'); e.code = 'type'; throw e; }
+    const img = await decodeImage(await fileToDataUrl(f));
+    const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // JPEG has no alpha
+    cx.drawImage(img, 0, 0, w, h);
+    return { name: f.name, dataUrl: c.toDataURL('image/jpeg', JPEG_Q) };
+  }
+
+  function saveAttachments() {
+    try {
+      localStorage.setItem(LS_ATT, JSON.stringify(store));
+      attachmentsPersisted = true;
+    } catch (e) {
+      // quota exceeded — attachments live in memory only for this visit
+      attachmentsPersisted = false;
+      try { localStorage.removeItem(LS_ATT); } catch (e2) {}
+    }
+  }
+  function loadAttachments() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_ATT) || '{}');
+      ['id', 'cert'].forEach(k => {
+        if (Array.isArray(saved[k])) {
+          store[k] = saved[k].filter(it => it && typeof it.dataUrl === 'string' &&
+            it.dataUrl.startsWith('data:image/'));
+        }
+      });
+    } catch (e) {}
+  }
+
+  function uploadError(key, text) {
+    const el = $('#err-' + key);
+    if (!el) return;
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
+  }
+  function renderThumbs(key) {
+    const thumbs = $('#thumbs-' + key);
     thumbs.innerHTML = '';
-    store[key].forEach((f, idx) => {
+    store[key].forEach((item, idx) => {
       const t = document.createElement('div');
       t.className = 't';
-      if (f.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(f);
-        t.appendChild(img);
-      } else {
-        const d = document.createElement('div');
-        d.style = 'font-size:11px;color:var(--muted);padding:4px;text-align:center;word-break:break-all';
-        d.textContent = '📄 ' + f.name;
-        t.appendChild(d);
-      }
+      const img = document.createElement('img');
+      img.src = item.dataUrl;
+      img.alt = item.name || 'קובץ מצורף';
+      t.appendChild(img);
       const rm = document.createElement('button');
       rm.type = 'button';
       rm.textContent = '×';
       rm.title = 'הסרה';
-      rm.onclick = () => { store[key].splice(idx, 1); renderThumbs(key, thumbs); saveForm(); };
+      rm.setAttribute('aria-label', 'הסרת ' + (item.name || 'הקובץ'));
+      rm.onclick = () => { store[key].splice(idx, 1); renderThumbs(key); saveAttachments(); };
       t.appendChild(rm);
       thumbs.appendChild(t);
     });
   }
-  setupUpload('file-id', 'id', 'thumbs-id');
-  setupUpload('file-cert', 'cert', 'thumbs-cert');
-
-  function fileToDataUrl(f) {
-    return new Promise(res => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = () => res(null);
-      r.readAsDataURL(f);
+  function setupUpload(inputId, key) {
+    const input = $('#' + inputId);
+    input.addEventListener('change', async e => {
+      const files = [...e.target.files];
+      input.value = '';
+      uploadError(key, '');
+      const failed = [];
+      for (const f of files) {
+        try { store[key].push(await processImageFile(f)); }
+        catch (err) { failed.push({ f, err }); }
+      }
+      renderThumbs(key);
+      saveAttachments();
+      if (failed.length) {
+        const names = failed.map(x => x.f.name).join(', ');
+        const anyPdf = failed.some(x => x.f.type === 'application/pdf' || /\.pdf$/i.test(x.f.name));
+        uploadError(key, anyPdf
+          ? 'לא ניתן לצרף קובץ PDF (' + names + '). נא לצלם את המסמך או לצרף תמונה (JPG / PNG).'
+          : 'לא ניתן לקרוא את הקובץ: ' + names + '. נא לצרף תמונה בפורמט JPG או PNG.');
+      }
     });
   }
+  loadAttachments();
+  renderThumbs('id');
+  renderThumbs('cert');
+  setupUpload('file-id', 'id');
+  setupUpload('file-cert', 'cert');
 
   /* ---- collect form data for pdf.js ---- */
-  async function collectData() {
+  function collectData() {
     const val = n => ($('[name="' + n + '"]') || {}).value || '';
     const answers = (window.QUESTIONS || []).map((item, i) => ({ q: item.q, a: val('q' + i) }));
     const engineering = (window.ENGINEERING || []).map((item, i) => ({ q: item.q, a: val('e' + i) }));
-    const attachments = [];
-    for (const f of store.id) {
-      if (!f.type.startsWith('image/')) continue;
-      const d = await fileToDataUrl(f);
-      if (d) attachments.push({ label: 'תעודת זהות', dataUrl: d });
-    }
-    for (const f of store.cert) {
-      if (!f.type.startsWith('image/')) continue;
-      const d = await fileToDataUrl(f);
-      if (d) attachments.push({ label: 'תעודה רלוונטית', dataUrl: d });
-    }
+    const attachments = [
+      ...store.id.map(it => ({ label: 'תעודת זהות', dataUrl: it.dataUrl })),
+      ...store.cert.map(it => ({ label: 'תעודה רלוונטית', dataUrl: it.dataUrl }))
+    ];
     return {
       contact: { fullname: val('fullname'), position: val('position'), phone: val('phone'), email: val('email') },
       answers, engineering, attachments
@@ -156,6 +222,9 @@
 
   $('#share-close').addEventListener('click', closeSharePanel);
   overlay.addEventListener('click', e => { if (e.target === overlay) closeSharePanel(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && overlay.classList.contains('show')) closeSharePanel();
+  });
 
   sNative.addEventListener('click', async () => {
     if (!sNative._file) return;
@@ -195,9 +264,15 @@
     setLoading(true);
     showMsg('ok', 'מכין קובץ PDF…');
     try {
-      const data = await collectData();
+      const data = collectData();
       const result = await window.generateInterviewPdf(data);
-      showMsg('ok', 'ה-PDF מוכן לשיתוף.');
+      const d = result.debug || {};
+      if (d.imagesRequested != null && d.imagesEmbedded < d.imagesRequested) {
+        showMsg('err', 'שימו לב: ' + (d.imagesRequested - d.imagesEmbedded) +
+          ' מהתמונות שצורפו לא נכללו ב-PDF. בדקו את הקבצים ונסו שוב.');
+      } else {
+        showMsg('ok', 'ה-PDF מוכן לשיתוף.');
+      }
       openSharePanel(result);
     } catch (e) {
       console.error(e);
@@ -207,9 +282,11 @@
     }
   });
 
-  /* ---- guard against accidental leave with data ---- */
+  /* ---- leave guard: only when something failed to persist ---- */
   window.addEventListener('beforeunload', e => {
-    const has = ($('[name=fullname]') || {}).value || $$('textarea').some(t => t.value.trim());
+    if (textPersisted && attachmentsPersisted) return;
+    const has = ($('[name=fullname]') || {}).value || $$('textarea').some(t => t.value.trim()) ||
+      store.id.length || store.cert.length;
     if (has) { e.preventDefault(); e.returnValue = ''; }
   });
 })();

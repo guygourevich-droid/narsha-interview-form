@@ -93,6 +93,8 @@ button.btn:disabled{opacity:.6;cursor:wait}
 .msg.ok{background:#e7f6ee;color:var(--ok);border:1px solid #b7e4c9;display:block}
 .msg.err{background:#fdecea;color:var(--err);border:1px solid #f4c3bd;display:block}
 .note{font-size:13px;color:var(--muted);margin-top:6px}
+.upload-err{display:none;margin:8px 0 0;padding:10px 12px;border-radius:8px;font-size:13.5px;
+  font-weight:600;color:var(--err);background:#fdecea;border:1px solid #f4c3bd}
 
 /* share overlay */
 .share-overlay{display:none;position:fixed;inset:0;background:rgba(28,39,51,.55);
@@ -135,6 +137,7 @@ button.btn:disabled{opacity:.6;cursor:wait}
   .wrap{padding:16px 12px 110px}
   .grid2,.upload-row{grid-template-columns:1fr}
   header.top{padding:22px 20px;border-radius:14px}
+  header.top .logo{position:static;transform:none;display:inline-block;margin-bottom:12px;max-height:40px}
   header.top h1{font-size:21px}
   header.top p{font-size:13.5px}
   .card{padding:18px 16px 8px}

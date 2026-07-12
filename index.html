@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>טופס ראיון עבודה – מהנדס / מנהל עבודה בבנייה</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,14 +47,16 @@
         </label>
       </div>
       <div class="thumbs" id="thumbs-id"></div>
+      <p class="upload-err" id="err-id" role="alert"></p>
       <div class="thumbs" id="thumbs-cert"></div>
-      <p class="note">התמונות יוטמעו אוטומטית בקובץ ה-PDF.</p>
+      <p class="upload-err" id="err-cert" role="alert"></p>
+      <p class="note">התמונות יוטמעו אוטומטית בקובץ ה-PDF ונשמרות בדפדפן עד לשליחה.</p>
     </div>
 
     <div class="actions">
       <button type="button" class="btn btn-primary" id="btn-share">📤 יצירת PDF ושיתוף</button>
     </div>
-    <div class="msg" id="msg"></div>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
   </form>
 </div>
 
@@ -74,7 +75,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf-2.5.1.umd.min.js"></script>
 <script src="questions.js"></script>
 <script src="pdf.js"></script>
 <script src="app.js"></script>

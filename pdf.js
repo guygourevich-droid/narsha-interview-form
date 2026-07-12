@@ -46,10 +46,26 @@
   };
 
   /* ---- helpers ---- */
+  function breakLongWord(ctx, word, maxW) {
+    // hard-break a single word (long email/URL) that exceeds the line width
+    const parts = [];
+    let cur = '';
+    for (const ch of word) {
+      if (cur && ctx.measureText(cur + ch).width > maxW) { parts.push(cur); cur = ch; }
+      else cur += ch;
+    }
+    if (cur) parts.push(cur);
+    return parts.length ? parts : [word];
+  }
   function wrap(ctx, text, maxW, font) {
     ctx.font = font;
-    const words = String(text == null ? '' : text).trim().split(/\s+/);
-    if (!words.length || words[0] === '') return [''];
+    const rawWords = String(text == null ? '' : text).trim().split(/\s+/);
+    if (!rawWords.length || rawWords[0] === '') return [''];
+    const words = [];
+    for (const w of rawWords) {
+      if (ctx.measureText(w).width > maxW) words.push(...breakLongWord(ctx, w, maxW));
+      else words.push(w);
+    }
     const lines = [];
     let line = words[0];
     for (let i = 1; i < words.length; i++) {
@@ -72,6 +88,7 @@
   }
   async function loadImages(attachments) {
     const out = [];
+    let failed = 0;
     for (const a of attachments) {
       try {
         const img = await new Promise((res, rej) => {
@@ -79,21 +96,49 @@
           im.onload = () => res(im); im.onerror = rej; im.src = a.dataUrl;
         });
         out.push({ label: a.label || 'מסמך', img, w: img.naturalWidth, h: img.naturalHeight });
-      } catch (e) { /* skip unreadable */ }
+      } catch (e) { failed++; }   // reported via debug.imagesEmbedded so app.js can warn
     }
+    out.failed = failed;
     return out;
   }
 
-  /* ---- block measurers (return descriptor with height h) ---- */
+  /* ---- block measurers (each returns block(s) with height h) ----
+     No block may exceed MAXBLK (one full page of content): text blocks
+     taller than that are split into continuation chunks so long answers
+     flow across pages instead of being clipped at the canvas bottom. */
   const HEADER_H = 104;
+  const MAXBLK = BOTTOM - MT;
   function mHeader() { return { kind: 'header', h: HEADER_H + 18 }; }
-  function mContact(rows) { return { kind: 'contact', rows, h: 116 + 16 }; }
+  function mContact(ctx, rows) {
+    const colW = CW2 / 2, padX = 16, availW = colW - padX * 2;
+    const cells = rows.map(([label, value]) => ({
+      label,
+      lines: wrap(ctx, (value && String(value).trim()) ? value : '—', availW, F.cellVal)
+    }));
+    const rowHs = [0, 1].map(r =>
+      15 + Math.max(cells[r * 2].lines.length, cells[r * 2 + 1].lines.length) * 17 + 14);
+    const boxH = 16 + rowHs[0] + rowHs[1] + 8;
+    return { kind: 'contact', cells, rowHs, boxH, h: boxH + 16 };
+  }
   function mQA(ctx, num, q, a) {
     const qLines = wrap(ctx, num + q, CW2, F.q);
     const aText = (a && String(a).trim()) ? a : '—';
     const aLines = wrap(ctx, aText, CW2, F.a);
-    const h = 8 + qLines.length * 20 + 6 + aLines.length * 18 + 12 + 1;
-    return { kind: 'qa', q, a: aText, qLines, aLines, h };
+    const whole = 8 + qLines.length * 20 + 6 + aLines.length * 18 + 12 + 1;
+    if (whole <= MAXBLK) return [{ kind: 'qa', qLines, aLines, divider: true, h: whole }];
+    const blocks = [];
+    const rest = aLines.slice();
+    let first = true;
+    while (rest.length) {
+      const headH = first ? 8 + qLines.length * 20 + 6 : 8;
+      const cap = Math.max(1, Math.floor((MAXBLK - headH - 13) / 18));
+      const take = rest.splice(0, cap);
+      const last = rest.length === 0;
+      blocks.push({ kind: 'qa', qLines: first ? qLines : [], aLines: take,
+        divider: last, h: headH + take.length * 18 + (last ? 13 : 0) });
+      first = false;
+    }
+    return blocks;
   }
   function mSection(title) { return { kind: 'section', title, h: 48, keepWithNext: true }; }
   function mScenario(ctx, num, q, a) {
@@ -101,8 +146,23 @@
     const scnBoxH = scnLines.length * 17 + 20;
     const aText = (a && String(a).trim()) ? a : '—';
     const aLines = wrap(ctx, aText, CW2, F.a);
-    const h = 10 + scnBoxH + 8 + aLines.length * 18 + 14;
-    return { kind: 'scenario', q, a: aText, scnLines, aLines, scnBoxH, h };
+    const whole = 10 + scnBoxH + 8 + aLines.length * 18 + 14;
+    if (whole <= MAXBLK) return [{ kind: 'scenario', scnLines, aLines, scnBoxH, h: whole }];
+    const blocks = [];
+    const rest = aLines.slice();
+    const headH = 10 + scnBoxH + 8;
+    const firstCap = Math.max(1, Math.floor((MAXBLK - headH - 14) / 18));
+    let take = rest.splice(0, firstCap);
+    blocks.push({ kind: 'scenario', scnLines, scnBoxH, aLines: take,
+      h: headH + take.length * 18 + (rest.length ? 0 : 14) });
+    while (rest.length) {
+      const cap = Math.max(1, Math.floor((MAXBLK - 8 - 14) / 18));
+      take = rest.splice(0, cap);
+      const last = rest.length === 0;
+      blocks.push({ kind: 'qa', qLines: [], aLines: take,
+        divider: false, h: 8 + take.length * 18 + (last ? 14 : 0) });
+    }
+    return blocks;
   }
   function mImageRow(group) {
     const gap = 16, cellW = (CW2 - gap) / 2, maxCellH = (BOTTOM - MT) - 60;
@@ -129,35 +189,38 @@
     ctx.fillText('תאריך מילוי: ' + b.today, PAGE_W - M, 62);
   }
   function dContact(ctx, b) {
-    const boxH = 116, x = M, y = b._y + 8;
-    roundRect(ctx, x, y, CW2, boxH, 10);
+    const x = M, y = b._y + 8;
+    roundRect(ctx, x, y, CW2, b.boxH, 10);
     ctx.fillStyle = C.boxBg; ctx.fill();
     ctx.strokeStyle = C.boxBorder; ctx.lineWidth = 1; ctx.stroke();
     const colW = CW2 / 2, padX = 16;
     // RTL: col 0 = right half, col 1 = left half
     const cellRight = col => (col === 0 ? x + CW2 - padX : x + colW - padX);
-    const rows = b.rows;
-    const layout = [
-      [rows[0], 0, 0], [rows[1], 1, 0],
-      [rows[2], 0, 1], [rows[3], 1, 1]
-    ];
     ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    layout.forEach(([pair, col, r]) => {
-      const cx = cellRight(col), cy = y + 16 + r * 46;
-      ctx.fillStyle = C.brand; ctx.font = F.cellLabel; ctx.fillText(pair[0], cx, cy);
-      ctx.fillStyle = C.ink; ctx.font = F.cellVal; ctx.fillText(pair[1] || '—', cx, cy + 15);
-    });
+    let cy = y + 16;
+    for (let r = 0; r < 2; r++) {
+      for (let col = 0; col < 2; col++) {
+        const cell = b.cells[r * 2 + col];
+        const cx = cellRight(col);
+        ctx.fillStyle = C.brand; ctx.font = F.cellLabel; ctx.fillText(cell.label, cx, cy);
+        ctx.fillStyle = C.ink; ctx.font = F.cellVal;
+        cell.lines.forEach((ln, i) => ctx.fillText(ln, cx, cy + 15 + i * 17));
+      }
+      cy += b.rowHs[r];
+    }
   }
   function dQA(ctx, b) {
     let y = b._y + 8;
     ctx.textAlign = 'right'; ctx.textBaseline = 'top';
     ctx.fillStyle = C.brand; ctx.font = F.q;
     b.qLines.forEach(ln => { ctx.fillText(ln, PAGE_W - M, y); y += 20; });
-    y += 6;
+    if (b.qLines.length) y += 6;
     ctx.fillStyle = C.ink; ctx.font = F.a;
     b.aLines.forEach(ln => { ctx.fillText(ln, PAGE_W - M, y); y += 18; });
-    ctx.strokeStyle = C.line; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(M, b._y + b.h - 1); ctx.lineTo(PAGE_W - M, b._y + b.h - 1); ctx.stroke();
+    if (b.divider) {
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(M, b._y + b.h - 1); ctx.lineTo(PAGE_W - M, b._y + b.h - 1); ctx.stroke();
+    }
   }
   function dSection(ctx, b) {
     const y = b._y + 14;
@@ -241,16 +304,16 @@
     /* ---- build block list (measure) ---- */
     const blocks = [];
     blocks.push(Object.assign(mHeader(), { today }));
-    blocks.push(mContact([
+    blocks.push(mContact(ctx, [
       ['שם מלא', contact.fullname],
       ['תפקיד מבוקש', contact.position],
       ['טלפון', contact.phone],
       ['דוא"ל', contact.email]
     ]));
-    answers.forEach((a, i) => blocks.push(mQA(ctx, (i + 1) + '. ', a.q, a.a)));
+    answers.forEach((a, i) => blocks.push(...mQA(ctx, (i + 1) + '. ', a.q, a.a)));
     if (engineering.length) {
       blocks.push(mSection('שאלות הנדסיות'));
-      engineering.forEach((e, i) => blocks.push(mScenario(ctx, (answers.length + i + 1) + '. ', e.q, e.a)));
+      engineering.forEach((e, i) => blocks.push(...mScenario(ctx, (answers.length + i + 1) + '. ', e.q, e.a)));
     }
     if (images.length) {
       blocks.push(mSection('מסמכים מצורפים'));
@@ -263,11 +326,14 @@
     const topFor = p => (p === 0 ? 0 : MT);
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i];
-      const need = b.h + (b.keepWithNext && blocks[i + 1] ? blocks[i + 1].h : 0);
+      let need = b.h + (b.keepWithNext && blocks[i + 1] ? blocks[i + 1].h : 0);
       const pTop = topFor(page);
       const atTop = (y === pTop);
       const usable = BOTTOM - pTop;
-      if (!atTop && y + need > BOTTOM && need <= usable) {
+      // if the pair can't fit on any page, break for this block alone
+      // (every single block is <= MAXBLK by construction, so it always fits)
+      if (need > usable) need = b.h;
+      if (!atTop && y + need > BOTTOM) {
         page++; y = topFor(page); pages[page] = [];
       }
       if (!pages[page]) pages[page] = [];
@@ -296,6 +362,8 @@
       blob, filename,
       debug: {
         pageCount: N,
+        imagesRequested: (data.attachments || []).length,
+        imagesEmbedded: images.length,
         pages: pages.map((pg, i) => ({
           idx: i, blocks: pg.length,
           kinds: pg.map(b => b.kind),
