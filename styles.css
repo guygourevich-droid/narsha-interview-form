@@ -72,6 +72,8 @@ input:focus,textarea:focus{outline:none;border-color:var(--brand-2);
 .drop b{color:var(--brand);display:block;margin-bottom:4px}
 .drop small{color:var(--muted)}
 .drop input{display:none}
+.drop.busy{pointer-events:none;opacity:.65;cursor:progress;border-style:solid}
+.drop.busy b::after{content:" — מעבד תמונה…";font-weight:500;color:var(--muted)}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .thumbs .t{position:relative;width:74px;height:74px;border-radius:8px;overflow:hidden;
   border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center}

@@ -122,7 +122,9 @@ Using the tools below, iterate until ALL hold:
 - **Uploads:** files are validated + decoded + re-encoded to a bounded JPEG at pick
   time (`app.js processImageFile`, max 1600px, q=0.82). Unsupported files (HEIC on
   Chrome/Android, PDFs, corrupt images) are rejected with a visible Hebrew error
-  instead of being silently dropped from the PDF.
+  instead of being silently dropped from the PDF. Caps: 25MB per file, 6 files per
+  category; decode streams via object URL (original never read into JS memory);
+  the drop zone shows a busy state while converting.
 - **Persistence:** attachments are saved to localStorage (`narsha_interview_form_v2_att`)
   and restored on reload; the `beforeunload` guard fires only when persistence failed.
 - **Pagination:** text blocks taller than one page (`MAXBLK`) are split into

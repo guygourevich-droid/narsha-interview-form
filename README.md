@@ -25,7 +25,9 @@ the browser's own text engine.
 - Document uploads (ID + certificate). Every picked file is validated, decoded
   and re-encoded to a bounded JPEG **at pick time** — unsupported files (HEIC on
   Chrome/Android, PDFs, corrupt files) are rejected with a visible Hebrew error
-  instead of silently vanishing from the PDF
+  instead of silently vanishing from the PDF. Inputs are capped (25MB per file,
+  6 files per category), decoding streams via object URL so the original never
+  loads into JS memory, and a busy indicator shows while converting
 - Auto-save to localStorage — **including attachments**, so a mobile tab
   reload/eviction restores everything; the leave-page warning only fires if
   something could not be persisted (e.g. storage quota exceeded)

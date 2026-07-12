@@ -59,36 +59,38 @@
      attachments small enough to persist in localStorage. */
   const store = { id: [], cert: [] };   // items: { name, dataUrl }
   const MAX_DIM = 1600, JPEG_Q = 0.82;
+  const MAX_FILE_MB = 25, MAX_PER_CATEGORY = 6;
   let attachmentsPersisted = true;
 
-  function fileToDataUrl(f) {
-    return new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = () => rej(new Error('read'));
-      r.readAsDataURL(f);
-    });
-  }
+  function uploadFail(code) { const e = new Error(code); e.code = code; return e; }
   function decodeImage(src) {
     return new Promise((res, rej) => {
       const im = new Image();
       im.onload = () => res(im);
-      im.onerror = () => rej(new Error('decode'));
+      im.onerror = () => rej(uploadFail('decode'));
       im.src = src;
     });
   }
   async function processImageFile(f) {
-    if (!f.type.startsWith('image/')) { const e = new Error('type'); e.code = 'type'; throw e; }
-    const img = await decodeImage(await fileToDataUrl(f));
-    const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.max(1, Math.round(img.naturalWidth * scale));
-    const h = Math.max(1, Math.round(img.naturalHeight * scale));
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const cx = c.getContext('2d');
-    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // JPEG has no alpha
-    cx.drawImage(img, 0, 0, w, h);
-    return { name: f.name, dataUrl: c.toDataURL('image/jpeg', JPEG_Q) };
+    if (!f.type.startsWith('image/')) throw uploadFail('type');
+    if (f.size > MAX_FILE_MB * 1024 * 1024) throw uploadFail('size');
+    // object URL: the browser streams the file into the decoder — the original
+    // never has to be read into JS memory (a FileReader data URL would)
+    const url = URL.createObjectURL(f);
+    try {
+      const img = await decodeImage(url);
+      const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // JPEG has no alpha
+      cx.drawImage(img, 0, 0, w, h);
+      return { name: f.name, dataUrl: c.toDataURL('image/jpeg', JPEG_Q) };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function saveAttachments() {
@@ -141,23 +143,42 @@
   }
   function setupUpload(inputId, key) {
     const input = $('#' + inputId);
+    const drop = input.closest('.drop');
     input.addEventListener('change', async e => {
       const files = [...e.target.files];
       input.value = '';
+      if (!files.length) return;
       uploadError(key, '');
+      drop.classList.add('busy');
+      drop.setAttribute('aria-busy', 'true');
       const failed = [];
-      for (const f of files) {
-        try { store[key].push(await processImageFile(f)); }
-        catch (err) { failed.push({ f, err }); }
+      try {
+        for (const f of files) {
+          if (store[key].length >= MAX_PER_CATEGORY) { failed.push({ f, code: 'count' }); continue; }
+          try { store[key].push(await processImageFile(f)); }
+          catch (err) { failed.push({ f, code: err.code || 'decode' }); }
+        }
+      } finally {
+        drop.classList.remove('busy');
+        drop.removeAttribute('aria-busy');
       }
       renderThumbs(key);
       saveAttachments();
       if (failed.length) {
-        const names = failed.map(x => x.f.name).join(', ');
-        const anyPdf = failed.some(x => x.f.type === 'application/pdf' || /\.pdf$/i.test(x.f.name));
-        uploadError(key, anyPdf
-          ? 'לא ניתן לצרף קובץ PDF (' + names + '). נא לצלם את המסמך או לצרף תמונה (JPG / PNG).'
-          : 'לא ניתן לקרוא את הקובץ: ' + names + '. נא לצרף תמונה בפורמט JPG או PNG.');
+        const names = codes => failed.filter(x => codes.includes(x.code)).map(x => x.f.name).join(', ');
+        const parts = [];
+        if (failed.some(x => x.code === 'count'))
+          parts.push('ניתן לצרף עד ' + MAX_PER_CATEGORY + ' קבצים בקטגוריה זו.');
+        if (failed.some(x => x.code === 'size'))
+          parts.push('הקובץ גדול מדי (מעל ' + MAX_FILE_MB + 'MB): ' + names(['size']) + '.');
+        const badType = failed.filter(x => x.code === 'type' || x.code === 'decode');
+        if (badType.length) {
+          const anyPdf = badType.some(x => x.f.type === 'application/pdf' || /\.pdf$/i.test(x.f.name));
+          parts.push(anyPdf
+            ? 'לא ניתן לצרף קובץ PDF (' + names(['type', 'decode']) + '). נא לצלם את המסמך או לצרף תמונה (JPG / PNG).'
+            : 'לא ניתן לקרוא את הקובץ: ' + names(['type', 'decode']) + '. נא לצרף תמונה בפורמט JPG או PNG.');
+        }
+        uploadError(key, parts.join(' '));
       }
     });
   }

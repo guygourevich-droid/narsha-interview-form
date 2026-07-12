@@ -107,6 +107,28 @@ function check(name, ok, detail) {
   check('long email + long word PDF generated', !!r5.b64, '');
   fs.writeFileSync(path.join(OUT, 'edge-longvals.pdf'), Buffer.from(r5.b64, 'base64'));
 
+  // --- 7: oversized file (>25MB) rejected before any processing ---
+  const bigFile = path.join(OUT, 'big.png');
+  fs.writeFileSync(bigFile, Buffer.alloc(26 * 1024 * 1024));
+  await (await page.$('#file-id')).uploadFile(bigFile);
+  await sleep(800);
+  r = await page.evaluate(() => ({
+    err: document.getElementById('err-id').textContent,
+    thumbs: document.querySelectorAll('#thumbs-id .t').length
+  }));
+  check('26MB file rejected with size error', r.err.includes('גדול מדי') && r.thumbs === 1, JSON.stringify(r));
+  fs.unlinkSync(bigFile);
+
+  // --- 8: per-category count cap (6) with a visible error on overflow ---
+  const png = path.join(ROOT, 'test-assets', 'test-cert.png');
+  await (await page.$('#file-cert')).uploadFile(png, png, png, png, png, png, png);
+  await sleep(2500);
+  r = await page.evaluate(() => ({
+    err: document.getElementById('err-cert').textContent,
+    thumbs: document.querySelectorAll('#thumbs-cert .t').length
+  }));
+  check('7 uploads → 6 accepted + count-cap error', r.thumbs === 6 && r.err.includes('עד 6'), JSON.stringify(r));
+
   // --- 6: pdf.js reports dropped images via debug counts ---
   const r6 = await page.evaluate(async () => {
     const res = await window.generateInterviewPdf({
