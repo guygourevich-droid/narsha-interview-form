@@ -6,6 +6,21 @@ Vercel (pushes to `main` auto-deploy). Everything the candidate enters stays on
 their device; the output is a canvas-rendered PDF shared via the Web Share API
 (mobile) or download + WhatsApp/email (desktop).
 
+## Two forms on one site
+
+- `/` (root) — the **interview form** (`index.html`, `app.js`, `pdf.js`,
+  `questions.js`, `styles.css`).
+- `/klita/` — the **employee-onboarding clearance form** ("טופס טיולים נכנס",
+  `klita/`): 5 collapsible department checklists (53 tri-state items:
+  בוצע / לא רלוונטי / לא סומן), 7 draw-on-screen signature pads, employee +
+  CEO sign-off. Self-contained folder that mirrors the interview form's
+  patterns; it references the shared `/vendor/jspdf-*` and `/logo.png` by
+  absolute path but has its own `data.js`/`app.js`/`pdf.js`/`styles.css` and its
+  own localStorage key (`narsha_onboarding_v1`). The two forms do **not** share
+  code — if a third form appears, extract a shared canvas-PDF core then.
+  Verified by `test-onboarding.js` (spins up a static server so the absolute
+  paths resolve). Both forms' PDF generators must keep the MAXBLK invariant.
+
 ## Architecture
 
 - `app.js` → builds a data object → `pdf.js` (`window.generateInterviewPdf`)

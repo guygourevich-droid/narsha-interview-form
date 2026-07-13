@@ -5,6 +5,19 @@ positions. Candidates fill contact details, 12 questions and 2 engineering
 scenarios, attach documents, then generate a clean multi-page PDF and share it.
 **No backend — nothing leaves the device.**
 
+## Employee-onboarding form (`/klita/`)
+
+A second Hebrew form lives at `/klita/` (folder `klita/`): the new-employee
+clearance form ("טופס טיולים נכנס – קליטת עובד חדש"). It has 5 collapsible
+department checklists (53 items, each tri-state: **בוצע / לא רלוונטי / לא סומן**),
+a sticky overall-progress bar with per-department counters, 7 draw-on-screen
+signature pads (5 department reps + employee + CEO), and a CEO/VP sign-off. Like
+the interview form it autosaves to localStorage (key `narsha_onboarding_v1`,
+signatures included), generates a deterministic canvas PDF, and shares it via the
+same overlay. It is a self-contained folder that reuses the vendored jsPDF and
+logo by absolute path but shares no JS with the interview form. Verified by
+`test-onboarding.js`. Everything below describes the interview form.
+
 ## Why a canvas PDF (v2)
 
 The PDF is drawn directly onto a `<canvas>` (Canvas 2D renders Hebrew RTL/bidi

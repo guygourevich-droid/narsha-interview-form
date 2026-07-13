@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>טופס קליטת עובד חדש – נרשא לבנין והשקעות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- absolute paths so the page works whether it's opened as /klita or /klita/ -->
+<link rel="stylesheet" href="/klita/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img class="logo" src="/logo.png" alt="לוגו נרשא" onerror="this.style.display='none'">
+    <h1>טופס קליטת עובד חדש</h1>
+    <p>נרשא לבנין והשקעות בע"מ · טופס טיולים נכנס</p>
+  </header>
+
+  <!-- sticky overall progress -->
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-info">
+      <span class="progress-label">התקדמות כוללת</span>
+      <span class="progress-count" id="progress-count">0 / 53</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <form id="form" novalidate>
+    <!-- Employee identity -->
+    <div class="card">
+      <h2><span class="num">👤</span> פרטי העובד</h2>
+      <div class="grid2" id="employee-fields"></div>
+    </div>
+
+    <!-- Purpose -->
+    <div class="card purpose-card">
+      <h2><span class="num">🎯</span> מטרת הטופס</h2>
+      <p class="purpose-text" id="purpose-text"></p>
+    </div>
+
+    <!-- Department cards get injected here -->
+    <div id="departments"></div>
+
+    <!-- Employee acknowledgement -->
+    <div class="card approval-card" id="employee-approval"></div>
+
+    <!-- CEO / VP approval -->
+    <div class="card approval-card" id="ceo-approval"></div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="btn-share">📤 יצירת PDF ושיתוף</button>
+    </div>
+    <div class="msg" id="msg" role="status" aria-live="polite"></div>
+  </form>
+</div>
+
+<!-- Share overlay -->
+<div class="share-overlay" id="share-overlay">
+  <div class="share-panel">
+    <button class="share-close" id="share-close" type="button">×</button>
+    <div class="icon">✅</div>
+    <h3>ה-PDF מוכן לשיתוף</h3>
+    <p class="sub">בחרו כיצד תרצו לשלוח את הטופס</p>
+    <button class="share-btn share-native" id="s-native" type="button"><span class="ic">📤</span> שיתוף דרך הטלפון</button>
+    <button class="share-btn share-wa" id="s-whatsapp" type="button"><span class="ic">💬</span> שליחה ב-WhatsApp</button>
+    <button class="share-btn share-email" id="s-email" type="button"><span class="ic">✉️</span> שליחה באימייל</button>
+    <button class="share-btn share-download" id="s-download" type="button"><span class="ic">⬇️</span> הורדת הקובץ</button>
+    <div class="share-hint" id="share-hint"></div>
+  </div>
+</div>
+
+<script src="/vendor/jspdf-2.5.1.umd.min.js"></script>
+<script src="/klita/data.js"></script>
+<script src="/klita/pdf.js"></script>
+<script src="/klita/app.js"></script>
+</body>
+</html>

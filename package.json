@@ -9,7 +9,8 @@
     "test:share": "node test-share.js",
     "test:final": "node test-final.js",
     "test:edge": "node test-edge.js",
-    "test": "node test-images.js && node test-pdf.js && node test-e2e.js && node test-share.js && node test-final.js && node test-edge.js"
+    "test:onboarding": "node test-onboarding.js",
+    "test": "node test-images.js && node test-pdf.js && node test-e2e.js && node test-share.js && node test-final.js && node test-edge.js && node test-onboarding.js"
   },
   "devDependencies": {
     "puppeteer": "^25.3.0"
