@@ -27,12 +27,12 @@
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
-  <!-- resume from a saved draft (most useful when returning / receiving a file) -->
-  <div class="draft-bar">
-    <p class="draft-note">הטופס נשמר אוטומטית במכשיר הזה — אפשר לסגור ולפתוח שוב את אותו קישור ולהמשיך.
-      קיבלתם קובץ טיוטה ממכשיר אחר? טענו אותו כדי להמשיך מאותה נקודה.</p>
+  <!-- resume: only needed to bring in a draft file from another device -->
+  <div class="draft-bar draft-bar-resume">
+    <p class="draft-note"><b>ממשיכים באותו מכשיר?</b> אין צורך בכלום — פשוט פותחים שוב את אותו קישור,
+      הטופס נשמר אוטומטית. הכפתור למטה נחוץ רק אם קיבלתם קובץ טיוטה ממכשיר אחר.</p>
     <div class="draft-actions">
-      <label class="draft-btn" for="load-draft">📂 טעינת טיוטה שמורה
+      <label class="draft-btn draft-btn-load" for="load-draft">📂 יש לי קובץ טיוטה — לטעינה
         <input type="file" id="load-draft" accept=".json,application/json" hidden></label>
     </div>
   </div>
