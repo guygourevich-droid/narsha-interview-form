@@ -27,12 +27,11 @@
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
-  <!-- draft save / resume -->
+  <!-- resume from a saved draft (most useful when returning / receiving a file) -->
   <div class="draft-bar">
     <p class="draft-note">הטופס נשמר אוטומטית במכשיר הזה — אפשר לסגור ולפתוח שוב את אותו קישור ולהמשיך.
-      כדי לגבות או להעביר את הטופס למכשיר אחר, שמרו טיוטה.</p>
+      קיבלתם קובץ טיוטה ממכשיר אחר? טענו אותו כדי להמשיך מאותה נקודה.</p>
     <div class="draft-actions">
-      <button type="button" class="draft-btn" id="btn-save-draft">💾 שמירת טיוטה</button>
       <label class="draft-btn" for="load-draft">📂 טעינת טיוטה שמורה
         <input type="file" id="load-draft" accept=".json,application/json" hidden></label>
     </div>
@@ -59,6 +58,15 @@
 
     <!-- CEO / VP approval -->
     <div class="card approval-card" id="ceo-approval"></div>
+
+    <!-- save a draft to continue later / hand off to the next department -->
+    <div class="draft-bar draft-bar-save">
+      <p class="draft-note">רוצים להמשיך מאוחר יותר או להעביר את הטופס למחלקה/מכשיר הבא?
+        שמרו טיוטה — קובץ שמכיל את כל מה שמולא עד כה, כולל החתימות.</p>
+      <div class="draft-actions">
+        <button type="button" class="draft-btn draft-btn-save" id="btn-save-draft">💾 שמירת טיוטה</button>
+      </div>
+    </div>
 
     <div class="actions">
       <button type="button" class="btn btn-primary" id="btn-share">📤 יצירת PDF ושיתוף</button>
