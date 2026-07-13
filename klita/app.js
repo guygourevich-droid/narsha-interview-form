@@ -332,6 +332,58 @@
   $$('[data-emp]').forEach(i => { i.value = state.employee[i.dataset.emp] || ''; });
   updateProgress();
   window.addEventListener('resize', () => pads.forEach(p => p.refresh()));
+  // confirm to the user that a just-loaded draft was restored (survives the reload)
+  try {
+    if (sessionStorage.getItem('narsha_draft_loaded')) {
+      sessionStorage.removeItem('narsha_draft_loaded');
+      showMsg('ok', 'הטיוטה נטענה. אפשר להמשיך מהמקום שבו הפסקתם.');
+    }
+  } catch (e) {}
+
+  /* ---- draft save / resume (portable JSON of the whole form, signatures included) ---- */
+  function draftFilename() {
+    const name = (state.employee.name || 'עובד').trim().replace(/\s+/g, '-') || 'עובד';
+    return 'טיוטה-קליטה-' + name + '-' + todayISO() + '.json';
+  }
+  async function saveDraft() {
+    const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+    const filename = draftFilename();
+    const file = new File([blob], filename, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'טיוטת טופס קליטה',
+          text: 'טיוטת טופס קליטת עובד. לפתיחה: היכנסו לאתר הקליטה ולחצו "טעינת טיוטה שמורה".' });
+        showMsg('ok', 'הטיוטה נשלחה/נשמרה בהצלחה.');
+        return;
+      } catch (e) { if (e.name === 'AbortError') return; }   // user cancelled the share sheet
+    }
+    downloadBlob(blob, filename);
+    showMsg('ok', 'הטיוטה ירדה למכשיר (תיקיית ההורדות). שמרו אותה כדי להמשיך מאוחר יותר.');
+  }
+  function loadDraft(file) {
+    const reader = new FileReader();
+    reader.onerror = () => showMsg('err', 'לא ניתן לקרוא את הקובץ. נסו שוב.');
+    reader.onload = () => {
+      let parsed;
+      try { parsed = JSON.parse(reader.result); } catch (e) { parsed = null; }
+      if (!parsed || typeof parsed !== 'object' || !parsed.departments || !parsed.employee) {
+        showMsg('err', 'הקובץ שנבחר אינו טיוטת קליטה תקינה.');
+        return;
+      }
+      if (!confirm('טעינת הטיוטה תחליף את מה שממולא כרגע במכשיר הזה. להמשיך?')) return;
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(parsed));
+        sessionStorage.setItem('narsha_draft_loaded', '1');
+      } catch (e) {}
+      location.reload();   // rebuild everything (incl. signatures) from the loaded draft
+    };
+    reader.readAsText(file);
+  }
+  $('#btn-save-draft').addEventListener('click', saveDraft);
+  $('#load-draft').addEventListener('change', e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (f) loadDraft(f);
+  });
 
   /* ---- collect for pdf.js ---- */
   function collectData() {

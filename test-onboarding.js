@@ -101,6 +101,37 @@ function ok(msg) { console.log('✓ ' + msg); }
     document.querySelector('#progress-count').textContent.trim());
   restored === '12 / 53' ? ok('state restored after reload (12 / 53)') : fail('reload count=' + restored);
 
+  /* ---- draft save → fresh device → load round-trip ---- */
+  const draftJson = await page.evaluate(() => localStorage.getItem('narsha_onboarding_v1'));
+  const draftPath = path.join(ROOT, 'test-output', 'draft-roundtrip.json');
+  fs.mkdirSync(path.dirname(draftPath), { recursive: true });
+  fs.writeFileSync(draftPath, draftJson);
+  // simulate a different device: wipe local storage
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle0' });
+  await sleep(400);
+  const wiped = await page.evaluate(() => document.querySelector('#progress-count').textContent.trim());
+  wiped === '0 / 53' ? ok('fresh device starts empty (0 / 53)') : fail('after wipe count=' + wiped);
+  // load the draft file through the real file input (auto-accept the confirm)
+  await page.evaluate(() => { window.confirm = () => true; });
+  const input = await page.$('#load-draft');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    input.uploadFile(draftPath)
+  ]);
+  await sleep(400);
+  const afterLoad = await page.evaluate(() => ({
+    count: document.querySelector('#progress-count').textContent.trim(),
+    sig: (() => { try {
+      const s = JSON.parse(localStorage.getItem('narsha_onboarding_v1') || '{}');
+      const v = s.departments && s.departments.ops && s.departments.ops.signature;
+      return typeof v === 'string' && v.startsWith('data:image/png');
+    } catch (e) { return false; } })()
+  }));
+  afterLoad.count === '12 / 53' ? ok('draft loaded → state restored (12 / 53)') : fail('after load count=' + afterLoad.count);
+  afterLoad.sig ? ok('signature survived the draft round-trip') : fail('signature lost in draft round-trip');
+  fs.unlinkSync(draftPath);
+
   /* ---- Part B: full PDF for pixel analysis ---- */
   const res = await page.evaluate(async () => {
     // build a signature PNG in-page

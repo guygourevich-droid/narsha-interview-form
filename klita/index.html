@@ -27,6 +27,17 @@
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
+  <!-- draft save / resume -->
+  <div class="draft-bar">
+    <p class="draft-note">הטופס נשמר אוטומטית במכשיר הזה — אפשר לסגור ולפתוח שוב את אותו קישור ולהמשיך.
+      כדי לגבות או להעביר את הטופס למכשיר אחר, שמרו טיוטה.</p>
+    <div class="draft-actions">
+      <button type="button" class="draft-btn" id="btn-save-draft">💾 שמירת טיוטה</button>
+      <label class="draft-btn" for="load-draft">📂 טעינת טיוטה שמורה
+        <input type="file" id="load-draft" accept=".json,application/json" hidden></label>
+    </div>
+  </div>
+
   <form id="form" novalidate>
     <!-- Employee identity -->
     <div class="card">
