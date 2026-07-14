@@ -132,6 +132,21 @@ function ok(msg) { console.log('✓ ' + msg); }
   afterLoad.sig ? ok('signature survived the draft round-trip') : fail('signature lost in draft round-trip');
   fs.unlinkSync(draftPath);
 
+  /* ---- clear-form button wipes everything (after confirm) ---- */
+  await page.evaluate(() => { window.confirm = () => true; });
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'networkidle0' }),
+    page.click('#btn-clear')
+  ]);
+  await sleep(400);
+  const afterClear = await page.evaluate(() => ({
+    count: document.querySelector('#progress-count').textContent.trim(),
+    ls: localStorage.getItem('narsha_onboarding_v1')
+  }));
+  (afterClear.count === '0 / 53' && !afterClear.ls)
+    ? ok('clear button resets form + storage (0 / 53)')
+    : fail('after clear count=' + afterClear.count + ' storage=' + !!afterClear.ls);
+
   /* ---- Part B: full PDF for pixel analysis ---- */
   const res = await page.evaluate(async () => {
     // build a signature PNG in-page

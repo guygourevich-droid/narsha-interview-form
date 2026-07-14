@@ -177,6 +177,12 @@ button.btn:disabled{opacity:.6;cursor:wait}
 .msg.ok{background:#e7f6ee;color:var(--ok);border:1px solid #b7e4c9;display:block}
 .msg.err{background:#fdecea;color:var(--err);border:1px solid #f4c3bd;display:block}
 
+/* clear-form (destructive, low-prominence) */
+.clear-row{text-align:center;margin-top:18px}
+.clear-btn{background:none;border:none;color:var(--err);font-family:inherit;font-size:13.5px;
+  font-weight:600;cursor:pointer;padding:10px 14px;text-decoration:underline;text-underline-offset:3px}
+.clear-btn:hover{color:#a32d20}
+
 /* share overlay */
 .share-overlay{display:none;position:fixed;inset:0;background:rgba(28,39,51,.55);
   z-index:999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);

@@ -332,13 +332,26 @@
   $$('[data-emp]').forEach(i => { i.value = state.employee[i.dataset.emp] || ''; });
   updateProgress();
   window.addEventListener('resize', () => pads.forEach(p => p.refresh()));
-  // confirm to the user that a just-loaded draft was restored (survives the reload)
+  // confirm actions that survive a reload (draft load / form clear)
   try {
     if (sessionStorage.getItem('narsha_draft_loaded')) {
       sessionStorage.removeItem('narsha_draft_loaded');
       showMsg('ok', 'הטיוטה נטענה. אפשר להמשיך מהמקום שבו הפסקתם.');
+    } else if (sessionStorage.getItem('narsha_cleared')) {
+      sessionStorage.removeItem('narsha_cleared');
+      showMsg('ok', 'הטופס נוקה. אפשר להתחיל מחדש.');
     }
   } catch (e) {}
+
+  /* ---- clear the whole form (destructive, confirmed) ---- */
+  function clearForm() {
+    if (!confirm('פעולה זו תמחק את כל מה שמולא בטופס — פרטי העובד, כל הסימונים והחתימות. ' +
+      'לא ניתן לבטל. להמשיך?')) return;
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    try { sessionStorage.setItem('narsha_cleared', '1'); } catch (e) {}
+    location.reload();
+  }
+  $('#btn-clear').addEventListener('click', clearForm);
 
   /* ---- draft save / resume (portable JSON of the whole form, signatures included) ---- */
   function draftFilename() {
